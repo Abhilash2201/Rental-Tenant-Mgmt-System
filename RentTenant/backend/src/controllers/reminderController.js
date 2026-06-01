@@ -121,7 +121,7 @@ const getTodaysReminders = async (req, res, next) => {
 const getUnreadCount = async (req, res, next) => {
   try {
     const result = await query(
-      'SELECT COUNT(*) FROM notifications WHERE owner_id = $1 AND is_read = FALSE',
+      'SELECT COUNT(*) FROM reminders WHERE owner_id = $1 AND is_read = FALSE AND status = \'pending\'',
       [req.owner.id]
     );
 
@@ -144,9 +144,16 @@ const getNotifications = async (req, res, next) => {
     const limit = parseInt(req.query.limit) || 20;
 
     const result = await query(
-      `SELECT * FROM notifications
-       WHERE owner_id = $1
-       ORDER BY created_at DESC
+      `SELECT r.*,
+         t.name AS tenant_name,
+         u.unit_number,
+         b.name AS building_name
+       FROM reminders r
+       LEFT JOIN tenants t   ON t.id = r.tenant_id
+       LEFT JOIN units u     ON u.id = r.unit_id
+       LEFT JOIN buildings b ON b.id = u.building_id
+       WHERE r.owner_id = $1
+       ORDER BY r.created_at DESC
        LIMIT $2`,
       [req.owner.id, limit]
     );
@@ -168,7 +175,7 @@ const getNotifications = async (req, res, next) => {
 const markNotificationRead = async (req, res, next) => {
   try {
     await query(
-      'UPDATE notifications SET is_read = TRUE WHERE id = $1 AND owner_id = $2',
+      'UPDATE reminders SET is_read = TRUE WHERE id = $1 AND owner_id = $2',
       [req.params.id, req.owner.id]
     );
 
@@ -186,7 +193,7 @@ const markNotificationRead = async (req, res, next) => {
 const markAllNotificationsRead = async (req, res, next) => {
   try {
     const result = await query(
-      'UPDATE notifications SET is_read = TRUE WHERE owner_id = $1 AND is_read = FALSE',
+      'UPDATE reminders SET is_read = TRUE WHERE owner_id = $1 AND is_read = FALSE',
       [req.owner.id]
     );
 

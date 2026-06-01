@@ -147,8 +147,6 @@ const createBuilding = async (req, res, next) => {
       description,
     } = req.body;
 
-    // Collect uploaded photo URLs from Cloudinary (via multer)
-    // req.files is an array when using upload.array()
     const photos = req.files ? req.files.map((f) => f.path) : [];
 
     const result = await query(
@@ -210,7 +208,6 @@ const updateBuilding = async (req, res, next) => {
       description,
     } = req.body;
 
-    // If new photos uploaded, append to existing array
     let photos = existing.rows[0].photos || [];
     if (req.files && req.files.length > 0) {
       const newPhotos = req.files.map((f) => f.path);
@@ -290,7 +287,6 @@ const deletePhoto = async (req, res, next) => {
       [updatedPhotos, id]
     );
 
-    // Delete from Cloudinary (fire-and-forget — non-blocking)
     const publicId = getPublicIdFromUrl(photo_url);
     if (publicId) deleteFromCloudinary(publicId);
 
@@ -322,7 +318,6 @@ const deleteBuilding = async (req, res, next) => {
       throw new AppError('Building not found.', 404);
     }
 
-    // Delete all building photos from Cloudinary
     const photos = result.rows[0].photos || [];
     photos.forEach((url) => {
       const publicId = getPublicIdFromUrl(url);

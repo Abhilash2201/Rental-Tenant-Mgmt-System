@@ -222,7 +222,6 @@ const createTenant = async (req, res, next) => {
       );
     }
 
-    // Handle uploaded files (from multer)
     const photo_url    = req.files?.photo?.[0]?.path    || null;
     const id_proof_url = req.files?.id_proof?.[0]?.path || null;
 
@@ -395,7 +394,6 @@ const updateTenant = async (req, res, next) => {
       throw new AppError('Tenant not found.', 404);
     }
 
-    // Handle optional file uploads
     const photo_url    = req.files?.photo?.[0]?.path    || undefined;
     const id_proof_url = req.files?.id_proof?.[0]?.path || undefined;
 
