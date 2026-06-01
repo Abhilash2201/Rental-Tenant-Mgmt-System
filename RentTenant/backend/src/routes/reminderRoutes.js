@@ -15,10 +15,10 @@ const {
   dismissReminder,
   renewAgreement,
 } = require('../controllers/reminderController');
-const { protect } = require('../middleware/auth');
+const { protectOwner } = require('../middleware/firebaseAuth');
 
 const router = express.Router();
-router.use(protect);
+router.use(protectOwner);
 
 /**
  * @swagger

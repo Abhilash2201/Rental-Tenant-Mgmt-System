@@ -13,12 +13,12 @@ const {
   updateUnit,
   deleteUnit,
 } = require('../controllers/unitController');
-const { protect } = require('../middleware/auth');
+const { protectOwner } = require('../middleware/firebaseAuth');
 
 // mergeParams: true allows access to :buildingId from the parent router
 const router = express.Router({ mergeParams: true });
 
-router.use(protect);
+router.use(protectOwner);
 
 // ── Validation ────────────────────────────────────────────────────────────────
 

@@ -17,13 +17,13 @@ const {
   deleteBuilding,
 } = require('../controllers/buildingController');
 
-const { protect } = require('../middleware/auth');
-const { upload }  = require('../middleware/upload');
+const { protectOwner } = require('../middleware/firebaseAuth');
+const { upload }       = require('../middleware/upload');
 
 const router = express.Router();
 
 // All building routes require authentication
-router.use(protect);
+router.use(protectOwner);
 
 // ── Validation ────────────────────────────────────────────────────────────────
 
@@ -170,7 +170,7 @@ router.get('/:id', getBuildingById);
  */
 router.post(
   '/',
-  upload.array('photos', 5), // Accept up to 5 photos
+  upload.array('photos', 5),
   buildingValidation,
   createBuilding
 );

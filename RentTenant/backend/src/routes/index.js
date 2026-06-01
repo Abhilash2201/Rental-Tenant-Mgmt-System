@@ -47,7 +47,7 @@
 
 const express = require('express');
 
-const authRoutes     = require('./authRoutes');
+const authRoutes     = require('./firebaseAuthRoutes');
 const buildingRoutes = require('./buildingRoutes');
 const unitRoutes     = require('./unitRoutes');
 const tenantRoutes   = require('./tenantRoutes');

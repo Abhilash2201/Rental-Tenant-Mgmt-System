@@ -13,11 +13,11 @@ const {
   updateTenant,
   moveTenantOut,
 } = require('../controllers/tenantController');
-const { protect } = require('../middleware/auth');
-const { upload }  = require('../middleware/upload');
+const { protectOwner } = require('../middleware/firebaseAuth');
+const { upload }       = require('../middleware/upload');
 
 const router = express.Router();
-router.use(protect);
+router.use(protectOwner);
 
 // ── Validation ────────────────────────────────────────────────────────────────
 
@@ -143,8 +143,8 @@ router.get('/:id', getTenantById);
 router.post(
   '/',
   upload.fields([
-    { name: 'photo',    maxCount: 1 }, // Tenant photo
-    { name: 'id_proof', maxCount: 1 }, // ID proof document
+    { name: 'photo',    maxCount: 1 },
+    { name: 'id_proof', maxCount: 1 },
   ]),
   createTenantValidation,
   createTenant

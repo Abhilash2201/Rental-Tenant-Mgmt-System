@@ -14,10 +14,10 @@ const {
   markOverdueRents,
   getRentReport,
 } = require('../controllers/rentController');
-const { protect } = require('../middleware/auth');
+const { protectOwner } = require('../middleware/firebaseAuth');
 
 const router = express.Router();
-router.use(protect);
+router.use(protectOwner);
 
 // ── Validation ────────────────────────────────────────────────────────────────
 
