@@ -39,12 +39,18 @@ app.use(
  */
 app.use(
   cors({
-    origin: [
-      process.env.CLIENT_URL || 'http://localhost:5173', // Vite web app
-      'http://localhost:3000',                            // Alt web port
-      'http://localhost:19006',                           // Expo mobile dev
-    ],
-    credentials: true, // Allow cookies / Authorization headers
+    origin: (origin, callback) => {
+      // Allow all localhost origins in development (any port)
+      if (!origin || origin.startsWith('http://localhost') || origin.startsWith('http://10.0.2.2')) {
+        return callback(null, true);
+      }
+      // In production allow configured CLIENT_URL
+      if (process.env.CLIENT_URL && origin === process.env.CLIENT_URL) {
+        return callback(null, true);
+      }
+      callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   })

@@ -19,11 +19,9 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'rent_tenant_db',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD,
-  // Max connections in pool (default: 10)
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
   max: 10,
-  // Time (ms) a client is allowed to sit idle before being removed
   idleTimeoutMillis: 30000,
-  // Time (ms) to wait for a connection before throwing an error
   connectionTimeoutMillis: 2000,
 });
 
