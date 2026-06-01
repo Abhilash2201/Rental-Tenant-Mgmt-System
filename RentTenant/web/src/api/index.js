@@ -16,12 +16,6 @@ import api from './axios';
 // ══════════════════════════════════════════════════════════════════════════════
 
 export const authAPI = {
-  /** Register a new owner account */
-  register: (data) => api.post('/auth/register', data),
-
-  /** Login and receive JWT token */
-  login: (data) => api.post('/auth/login', data),
-
   /** Get logged-in owner's profile + stats */
   getMe: () => api.get('/auth/me'),
 
@@ -31,8 +25,8 @@ export const authAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
 
-  /** Change password */
-  changePassword: (data) => api.put('/auth/change-password', data),
+  /** Check if DB profile exists for current Firebase user */
+  profileExists: () => api.get('/auth/profile-exists'),
 };
 
 // ══════════════════════════════════════════════════════════════════════════════

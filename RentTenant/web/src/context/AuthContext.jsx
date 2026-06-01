@@ -1,120 +1,239 @@
 /**
  * @file context/AuthContext.jsx
- * @description Global authentication context.
- * Provides owner state, login, logout, and token management to all components.
- * Wrap the app with <AuthProvider> in main.jsx.
+ * @description Firebase authentication context for web application.
+ * Manages user auth state using Firebase Auth SDK.
+ *
+ * Features:
+ * - Automatic token refresh (Firebase handles this)
+ * - User session persistence
+ * - Loading state during auth checks
+ * - Error handling for auth operations
  */
 
-import { createContext, useContext, useState, useEffect } from 'react';
-import { authAPI } from '../api';
+import { createContext, useContext, useState, useEffect } from "react";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  updateProfile,
+} from "firebase/auth";
+import { auth } from "../firebase";
+import api from "../api/axios";
 
-// Create the context
-const AuthContext = createContext(null);
+const AuthContext = createContext();
 
 /**
- * AuthProvider — wraps the app and provides auth state to all children.
- * Reads token + owner from localStorage on mount (persists across page refreshes).
- *
- * @param {ReactNode} children - Child components
+ * AuthProvider component - wrap your entire app with this
+ * Usage: <AuthProvider><App /></AuthProvider>
  */
-export const AuthProvider = ({ children }) => {
-  // Initialize from localStorage so user stays logged in on refresh
-  const [owner, setOwner]   = useState(() => {
-    try {
-      const stored = localStorage.getItem('owner');
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  });
-
-  const [token, setToken]     = useState(() => localStorage.getItem('token') || null);
-  const [loading, setLoading] = useState(true); // Initial auth check in progress
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [owner, setOwner] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   /**
-   * On mount: verify the stored token is still valid by calling /auth/me.
-   * If token expired or missing, clear auth state.
+   * Listen to Firebase auth state changes
+   * This runs once on mount and whenever auth state changes
    */
   useEffect(() => {
-    const verifyToken = async () => {
-      if (!token) {
-        setLoading(false);
-        return;
-      }
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setLoading(true);
       try {
-        const res = await authAPI.getMe();
-        setOwner(res.data.owner);
-      } catch {
-        // Token invalid — clear everything
-        logout();
+        if (firebaseUser) {
+          setUser(firebaseUser);
+
+          // Check if user profile exists in our database
+          const response = await api.get("/auth/profile-exists");
+          if (response.data.exists) {
+            setOwner(response.data.profile);
+          } else {
+            // Auto-create profile on first login using Firebase display name
+            try {
+              const created = await api.post("/auth/create-profile", {
+                name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
+              });
+              setOwner(created.data.owner);
+            } catch {
+              setOwner(null);
+            }
+          }
+        } else {
+          setUser(null);
+          setOwner(null);
+        }
+      } catch (err) {
+        console.error("Auth state error:", err);
       } finally {
         setLoading(false);
       }
-    };
+    });
 
-    verifyToken();
-  }, []); // Run once on mount
+    return unsubscribe;
+  }, []);
 
   /**
-   * Login: stores token and owner in state + localStorage.
-   *
-   * @param {string} newToken - JWT token from API response
-   * @param {Object} ownerData - Owner profile from API response
+   * Register a new user with Firebase
+   * @param {string} email
+   * @param {string} password
+   * @param {string} name
+   * @returns {Promise<Object>} Firebase user
    */
-  const login = (newToken, ownerData) => {
-    setToken(newToken);
-    setOwner(ownerData);
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('owner', JSON.stringify(ownerData));
+  const register = async (email, password, name) => {
+    try {
+      setError(null);
+      // Create user in Firebase Auth
+      const result = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
+
+      // Update profile name in Firebase
+      await updateProfile(result.user, { displayName: name });
+
+      // Now user needs to create their profile in our database
+      // This will be done in a separate step after they see the registration success
+
+      return result.user;
+    } catch (err) {
+      const errorMsg =
+        err.code === "auth/email-already-in-use"
+          ? "Email already registered"
+          : err.message;
+      setError(errorMsg);
+      throw new Error(errorMsg);
+    }
   };
 
   /**
-   * Logout: clears all auth state and localStorage.
-   * Redirect to /login is handled by the router.
+   * Create user profile in database after Firebase registration
+   * @param {string} name
+   * @param {string} phone
+   * @returns {Promise<Object>} Owner profile
    */
-  const logout = () => {
-    setToken(null);
-    setOwner(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('owner');
+  const createUserProfile = async (name, phone = "") => {
+    try {
+      setError(null);
+      const response = await api.post("/auth/create-profile", { name, phone });
+      setOwner(response.data.owner);
+      return response.data.owner;
+    } catch (err) {
+      const errorMsg =
+        err.response?.data?.message || "Failed to create profile";
+      setError(errorMsg);
+      throw new Error(errorMsg);
+    }
   };
 
   /**
-   * Update owner in state (called after profile update).
-   *
-   * @param {Object} updatedOwner - New owner data
+   * Login an existing user
+   * @param {string} email
+   * @param {string} password
+   * @returns {Promise<Object>} Firebase user
    */
-  const updateOwner = (updatedOwner) => {
-    setOwner(updatedOwner);
-    localStorage.setItem('owner', JSON.stringify(updatedOwner));
+  const login = async (email, password) => {
+    try {
+      setError(null);
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      return result.user;
+    } catch (err) {
+      const errorMsg =
+        err.code === "auth/invalid-credential"
+          ? "Invalid email or password"
+          : err.message;
+      setError(errorMsg);
+      throw new Error(errorMsg);
+    }
   };
 
-  // Expose auth values and functions to all consumers
+  /**
+   * Logout current user
+   */
+  const logout = async () => {
+    try {
+      setError(null);
+      await signOut(auth);
+      setUser(null);
+      setOwner(null);
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  /**
+   * Update user profile
+   * @param {string} name
+   * @param {string} phone
+   * @param {File} profilePic
+   * @returns {Promise<Object>} Updated owner profile
+   */
+  const updateUserProfile = async (name, phone, profilePic = null) => {
+    try {
+      setError(null);
+      const formData = new FormData();
+      formData.append("name", name);
+      formData.append("phone", phone);
+      if (profilePic) {
+        formData.append("profile_pic", profilePic);
+      }
+
+      const response = await api.put("/auth/me", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setOwner(response.data.owner);
+      return response.data.owner;
+    } catch (err) {
+      const errorMsg =
+        err.response?.data?.message || "Failed to update profile";
+      setError(errorMsg);
+      throw new Error(errorMsg);
+    }
+  };
+
+  /**
+   * Get current user's profile and stats
+   */
+  const getProfile = async () => {
+    try {
+      setError(null);
+      const response = await api.get("/auth/me");
+      setOwner(response.data.owner);
+      return response.data;
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || "Failed to fetch profile";
+      setError(errorMsg);
+      throw new Error(errorMsg);
+    }
+  };
+
   const value = {
+    user,
     owner,
-    token,
     loading,
-    isAuthenticated: !!token,
+    error,
+    register,
+    createUserProfile,
     login,
     logout,
-    updateOwner,
+    updateUserProfile,
+    getProfile,
+    isAuthenticated: !!user,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+}
 
 /**
- * Custom hook to consume AuthContext.
- * Throws an error if used outside of AuthProvider.
- *
- * @returns {Object} Auth context value
- * @example
- *   const { owner, logout, isAuthenticated } = useAuth();
+ * Hook to use auth context
+ * Usage: const { user, login, logout } = useAuth();
  */
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within AuthProvider");
   }
   return context;
-};
+}

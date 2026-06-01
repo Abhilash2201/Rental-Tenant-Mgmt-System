@@ -17,6 +17,7 @@
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import { auth } from './firebase';
 
 // ── Layout ──────────────────────────────────────────────────────────────────
 import MainLayout from './components/layout/MainLayout';
@@ -54,7 +55,9 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  // Also check auth.currentUser directly — React state may lag behind
+  // Firebase's own synchronous auth state after login/register
+  return (isAuthenticated || !!auth.currentUser) ? children : <Navigate to="/login" replace />;
 };
 
 /**
@@ -66,7 +69,7 @@ const PublicRoute = ({ children }) => {
 
   if (loading) return null;
 
-  return !isAuthenticated ? children : <Navigate to="/" replace />;
+  return (!isAuthenticated && !auth.currentUser) ? children : <Navigate to="/" replace />;
 };
 
 /**
