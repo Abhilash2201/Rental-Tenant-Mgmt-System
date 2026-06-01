@@ -13,54 +13,8 @@
  */
 
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import auth from '@react-native-firebase/auth';
 import { router } from 'expo-router';
-
-// ── Token helpers (SecureStore — encrypted on device) ──────────────────────
-
-const TOKEN_KEY = 'rent_manager_token';
-const OWNER_KEY = 'rent_manager_owner';
-
-/**
- * Save JWT token to encrypted secure storage.
- * @param {string} token
- */
-export const saveToken = async (token) => {
-  await SecureStore.setItemAsync(TOKEN_KEY, token);
-};
-
-/**
- * Retrieve JWT token from secure storage.
- * @returns {Promise<string|null>}
- */
-export const getToken = () => SecureStore.getItemAsync(TOKEN_KEY);
-
-/**
- * Remove token (called on logout).
- */
-export const removeToken = () => SecureStore.deleteItemAsync(TOKEN_KEY);
-
-/**
- * Save owner profile object to secure storage (serialized as JSON).
- * @param {Object} owner
- */
-export const saveOwner = async (owner) => {
-  await SecureStore.setItemAsync(OWNER_KEY, JSON.stringify(owner));
-};
-
-/**
- * Retrieve owner profile from secure storage.
- * @returns {Promise<Object|null>}
- */
-export const getOwner = async () => {
-  const data = await SecureStore.getItemAsync(OWNER_KEY);
-  return data ? JSON.parse(data) : null;
-};
-
-/**
- * Remove owner from storage (called on logout).
- */
-export const removeOwner = () => SecureStore.deleteItemAsync(OWNER_KEY);
 
 // ── Axios Instance ───────────────────────────────────────────────────────────
 
@@ -70,42 +24,45 @@ export const removeOwner = () => SecureStore.deleteItemAsync(OWNER_KEY);
  * because a physical device or emulator cannot reach 'localhost'.
  */
 const api = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:5000/api', // 10.0.2.2 = Android emulator → host machine
+  baseURL: process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:5000/api',
   headers: { 'Content-Type': 'application/json' },
-  timeout: 15000, // 15 second timeout
+  timeout: 15000,
 });
 
 // ── Request Interceptor ──────────────────────────────────────────────────────
 /**
- * Attach Bearer token to every request.
- * Reads from SecureStore asynchronously.
+ * Attach a fresh Firebase ID token to every request.
+ * getIdToken() auto-refreshes the token when it expires (no manual SecureStore needed).
  */
 api.interceptors.request.use(
   async (config) => {
-    const token = await getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const currentUser = auth().currentUser;
+    if (currentUser) {
+      try {
+        const token = await currentUser.getIdToken();
+        config.headers.Authorization = `Bearer ${token}`;
+      } catch (err) {
+        console.error('Failed to get Firebase token:', err);
+      }
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // ── Response Interceptor ─────────────────────────────────────────────────────
 /**
- * On 401: clear storage and redirect to login screen.
+ * On 401: sign out via Firebase and redirect to login screen.
  */
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      await removeToken();
-      await removeOwner();
-      // Navigate to auth login (Expo Router path)
+      await auth().signOut().catch(() => {});
       router.replace('/(auth)/login');
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -113,11 +70,11 @@ api.interceptors.response.use(
 // ══════════════════════════════════════════════════════════════════════════════
 
 export const authAPI = {
-  /** Register new owner */
-  register: (data) => api.post('/auth/register', data),
+  /** Create DB profile after Firebase registration (first login only) */
+  createProfile: (name, phone) => api.post('/auth/create-profile', { name, phone }),
 
-  /** Login — returns { token, owner } */
-  login: (data) => api.post('/auth/login', data),
+  /** Check if DB profile exists for the current Firebase user */
+  profileExists: () => api.get('/auth/profile-exists'),
 
   /** Get logged-in owner profile + stats */
   getMe: () => api.get('/auth/me'),
@@ -127,9 +84,6 @@ export const authAPI = {
     api.put('/auth/me', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-
-  /** Change password */
-  changePassword: (data) => api.put('/auth/change-password', data),
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
