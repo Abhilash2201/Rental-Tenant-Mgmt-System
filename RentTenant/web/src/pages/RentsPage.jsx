@@ -136,7 +136,7 @@ const RentsPage = () => {
 
     setPaying(true);
     try {
-      await rentAPI.markPaid(payModal._id, {
+      await rentAPI.markPaid(payModal.id, {
         amount_paid:     Number(payForm.amount_paid),
         payment_mode:    payForm.payment_mode,
         transaction_ref: payForm.transaction_ref,
@@ -239,7 +239,7 @@ const RentsPage = () => {
                   </tr>
                 ) : (
                   pending.map((rent) => (
-                    <tr key={rent._id} className="hover:bg-slate-700/40 transition-colors">
+                    <tr key={rent.id} className="hover:bg-slate-700/40 transition-colors">
                       {/* Tenant */}
                       <td className="px-4 py-3.5">
                         <p className="text-white font-medium">{rent.tenant_name}</p>
@@ -385,7 +385,7 @@ const RentsPage = () => {
                     </tr>
                   ) : (
                     (report?.rents || []).map((rent) => (
-                      <tr key={rent._id} className="hover:bg-slate-700/40 transition-colors">
+                      <tr key={rent.id} className="hover:bg-slate-700/40 transition-colors">
                         <td className="px-4 py-3 text-white">{rent.tenant_name}</td>
                         <td className="px-4 py-3">
                           <p className="text-slate-300">{rent.building_name || '—'}</p>

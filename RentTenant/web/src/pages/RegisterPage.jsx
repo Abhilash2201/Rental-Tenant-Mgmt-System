@@ -10,7 +10,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Building2, User, Mail, Phone, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { authAPI } from '../api';
 
 /**
  * RegisterPage — dark centered layout matching LoginPage aesthetics.
@@ -19,7 +18,7 @@ import { authAPI } from '../api';
  */
 const RegisterPage = () => {
   const navigate  = useNavigate();
-  const { login } = useAuth();
+  const { register } = useAuth();
 
   // Controlled form fields
   const [form, setForm] = useState({
@@ -53,18 +52,12 @@ const RegisterPage = () => {
 
     setLoading(true);
     try {
-      const res = await authAPI.register(form);
-      const { token, owner } = res.data;
-
-      // Auto-login: store token and owner profile in context
-      login(token, owner);
-
-      toast.success(`Account created! Welcome, ${owner.name}!`);
-      navigate('/');
+      // Create Firebase Auth account — onAuthStateChanged will auto-create
+      // the DB profile and PublicRoute will redirect to dashboard automatically
+      await register(form.email, form.password, form.name);
+      toast.success(`Account created! Welcome, ${form.name}!`);
     } catch (err) {
-      const message = err?.response?.data?.message || 'Registration failed. Please try again.';
-      toast.error(message);
-    } finally {
+      toast.error(err.message || 'Registration failed. Please try again.');
       setLoading(false);
     }
   };

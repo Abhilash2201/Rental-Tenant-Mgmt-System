@@ -77,7 +77,7 @@ const BuildingsPage = () => {
     queryFn:  () => buildingAPI.getAll().then((r) => r.data),
   });
 
-  const buildings = data?.buildings || [];
+  const buildings = data?.data || [];
 
   // ── Client-side search filter ──────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -197,8 +197,8 @@ const BuildingsPage = () => {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {filtered.map((building) => (
             <Link
-              key={building._id}
-              to={`/buildings/${building._id}`}
+              key={building.id}
+              to={`/buildings/${building.id}`}
               className="group bg-slate-800 border border-slate-700 rounded-xl overflow-hidden
                          hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-900/20 transition-all"
             >

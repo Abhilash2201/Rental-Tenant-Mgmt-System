@@ -101,9 +101,9 @@ const DashboardPage = () => {
 
   /** Quick mark-as-paid from the dashboard (defaults to cash, today's date) */
   const handleMarkPaid = async (rent) => {
-    setPayingId(rent._id);
+    setPayingId(rent.id);
     try {
-      await rentAPI.markPaid(rent._id, {
+      await rentAPI.markPaid(rent.id, {
         amount_paid:     rent.amount,
         payment_mode:    'cash',
         paid_date:       new Date().toISOString().split('T')[0],
@@ -223,7 +223,7 @@ const DashboardPage = () => {
               </div>
             ) : (
               reminders.map((r) => (
-                <div key={r._id} className="px-5 py-3 flex items-start justify-between gap-3">
+                <div key={r.id} className="px-5 py-3 flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     {/* Type badge */}
                     <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full mb-1 ${REMINDER_BADGE[r.type] || 'bg-slate-700 text-slate-300'}`}>
@@ -235,7 +235,7 @@ const DashboardPage = () => {
                   </div>
                   {/* Dismiss button */}
                   <button
-                    onClick={() => handleDismiss(r._id)}
+                    onClick={() => handleDismiss(r.id)}
                     className="flex-shrink-0 text-slate-500 hover:text-red-400 transition-colors p-1"
                     title="Dismiss"
                   >
@@ -282,7 +282,7 @@ const DashboardPage = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-700">
                   {pending.map((rent) => (
-                    <tr key={rent._id} className="hover:bg-slate-700/40 transition-colors">
+                    <tr key={rent.id} className="hover:bg-slate-700/40 transition-colors">
                       {/* Tenant name + unit */}
                       <td className="px-5 py-3">
                         <p className="text-white font-medium truncate max-w-[120px]">
@@ -302,12 +302,12 @@ const DashboardPage = () => {
                       <td className="px-3 py-3 text-right">
                         <button
                           onClick={() => handleMarkPaid(rent)}
-                          disabled={payingId === rent._id}
+                          disabled={payingId === rent.id}
                           className="bg-green-600 hover:bg-green-500 disabled:bg-green-800 disabled:cursor-not-allowed
                                      text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors
                                      flex items-center gap-1 ml-auto"
                         >
-                          {payingId === rent._id ? (
+                          {payingId === rent.id ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
                           ) : (
                             'Mark Paid'

@@ -10,7 +10,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Building2, Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { authAPI } from '../api';
 
 /**
  * LoginPage — full-screen centered form on a dark background.
@@ -19,7 +18,7 @@ import { authAPI } from '../api';
  */
 const LoginPage = () => {
   const navigate        = useNavigate();
-  const { login }       = useAuth();
+  const { login, owner } = useAuth();
 
   // Controlled form state
   const [form, setForm] = useState({ email: '', password: '' });
@@ -43,18 +42,11 @@ const LoginPage = () => {
 
     setLoading(true);
     try {
-      const res = await authAPI.login({ email: form.email, password: form.password });
-      const { token, owner } = res.data;
-
-      // Persist token + owner in context and localStorage
-      login(token, owner);
-
-      toast.success(`Welcome back, ${owner.name}!`);
+      await login(form.email, form.password);
+      toast.success(`Welcome back!`);
       navigate('/');
     } catch (err) {
-      // Show the server error message or a fallback
-      const message = err?.response?.data?.message || 'Invalid email or password.';
-      toast.error(message);
+      toast.error(err.message || 'Invalid email or password.');
     } finally {
       setLoading(false);
     }

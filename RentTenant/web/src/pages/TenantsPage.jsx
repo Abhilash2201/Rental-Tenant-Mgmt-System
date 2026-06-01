@@ -27,7 +27,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { tenantAPI } from '../api';
+import { tenantAPI, buildingAPI, unitAPI } from '../api';
 
 // ─── Status tab options ───────────────────────────────────────────────────────
 const STATUS_TABS = ['all', 'active', 'inactive'];
@@ -80,6 +80,24 @@ const TenantsPage = () => {
   const [idProofFile, setIdProofFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Selected building for unit cascade
+  const [selectedBuildingId, setSelectedBuildingId] = useState('');
+
+  // ── Fetch all buildings for dropdown ──────────────────────────────────────
+  const { data: buildingsData } = useQuery({
+    queryKey: ['buildings'],
+    queryFn:  () => buildingAPI.getAll().then((r) => r.data),
+  });
+  const buildings = buildingsData?.data || [];
+
+  // ── Fetch vacant units for selected building ───────────────────────────────
+  const { data: unitsData } = useQuery({
+    queryKey: ['units', selectedBuildingId],
+    queryFn:  () => unitAPI.getAll(selectedBuildingId, { status: 'vacant' }).then((r) => r.data),
+    enabled:  !!selectedBuildingId,
+  });
+  const vacantUnits = unitsData?.data || [];
+
   // ── Fetch tenants (filter passed as query param) ───────────────────────────
   const { data, isLoading } = useQuery({
     queryKey: ['tenants', activeTab],
@@ -89,7 +107,7 @@ const TenantsPage = () => {
         .then((r) => r.data),
   });
 
-  const tenants = data?.tenants || [];
+  const tenants = data?.data || [];
 
   // ── Form handlers ──────────────────────────────────────────────────────────
 
@@ -102,6 +120,7 @@ const TenantsPage = () => {
     setForm(INITIAL_FORM);
     setPhotoFile(null);
     setIdProofFile(null);
+    setSelectedBuildingId('');
   };
 
   /** Build FormData and submit */
@@ -202,7 +221,7 @@ const TenantsPage = () => {
               ) : (
                 tenants.map((tenant) => (
                   <tr
-                    key={tenant._id}
+                    key={tenant.id}
                     className="hover:bg-slate-700/40 transition-colors group"
                   >
                     {/* Avatar + Name */}
@@ -273,15 +292,15 @@ const TenantsPage = () => {
 
                     {/* Status badge */}
                     <td className="px-4 py-3.5">
-                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_BADGE[tenant.status] || STATUS_BADGE.inactive}`}>
-                        {tenant.status === 'active' ? 'Active' : 'Inactive'}
+                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${tenant.is_active ? STATUS_BADGE.active : STATUS_BADGE.inactive}`}>
+                        {tenant.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
 
                     {/* View link */}
                     <td className="px-4 py-3.5 text-right">
                       <Link
-                        to={`/tenants/${tenant._id}`}
+                        to={`/tenants/${tenant.id}`}
                         className="text-slate-500 hover:text-blue-400 transition-colors"
                       >
                         <ChevronRight className="w-5 h-5" />
@@ -310,18 +329,45 @@ const TenantsPage = () => {
 
             <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
 
-              {/* Unit ID */}
+              {/* Building selector */}
               <div>
-                <label className="field-label">Unit ID <span className="text-red-400">*</span></label>
-                <input
-                  type="text"
+                <label className="field-label">Building <span className="text-red-400">*</span></label>
+                <select
+                  value={selectedBuildingId}
+                  onChange={(e) => {
+                    setSelectedBuildingId(e.target.value);
+                    setForm((prev) => ({ ...prev, unit_id: '' }));
+                  }}
+                  required
+                  className="input-dark"
+                >
+                  <option value="">Select a building…</option>
+                  {buildings.map((b) => (
+                    <option key={b.id} value={b.id}>{b.name} — {b.city}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Unit selector (shows only vacant units) */}
+              <div>
+                <label className="field-label">Unit <span className="text-red-400">*</span></label>
+                <select
                   name="unit_id"
                   value={form.unit_id}
                   onChange={handleChange}
-                  placeholder="MongoDB ObjectId of the unit"
                   required
-                  className="input-dark"
-                />
+                  disabled={!selectedBuildingId}
+                  className="input-dark disabled:opacity-50"
+                >
+                  <option value="">
+                    {selectedBuildingId ? 'Select a vacant unit…' : 'Select a building first'}
+                  </option>
+                  {vacantUnits.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      Unit {u.unit_number} — Floor {u.floor_number} — ₹{Number(u.rent_amount).toLocaleString('en-IN')}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Full Name */}

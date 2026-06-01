@@ -79,7 +79,7 @@ const ReminderSkeleton = () => (
  * Shows tenant name, unit, building, trigger date, and an action button.
  */
 const ReminderRow = ({ reminder, section, onDismiss, dismissingId }) => {
-  const isDismissing = dismissingId === reminder._id;
+  const isDismissing = dismissingId === reminder.id;
 
   return (
     <div className="flex items-start justify-between gap-4 px-5 py-4">
@@ -123,7 +123,7 @@ const ReminderRow = ({ reminder, section, onDismiss, dismissingId }) => {
         )}
         {/* Dismiss button */}
         <button
-          onClick={() => onDismiss(reminder._id)}
+          onClick={() => onDismiss(reminder.id)}
           disabled={isDismissing}
           className="text-slate-500 hover:text-red-400 transition-colors p-1 disabled:opacity-40"
           title="Dismiss"
@@ -242,7 +242,7 @@ const RemindersPage = () => {
               ) : (
                 sectionReminders.map((reminder) => (
                   <ReminderRow
-                    key={reminder._id}
+                    key={reminder.id}
                     reminder={reminder}
                     section={section}
                     onDismiss={handleDismiss}
@@ -302,7 +302,7 @@ const RemindersPage = () => {
           ) : (
             notifications.map((notif) => (
               <div
-                key={notif._id}
+                key={notif.id}
                 className={`flex items-start gap-3 px-5 py-3.5 transition-colors ${
                   !notif.is_read ? 'bg-blue-500/5' : 'hover:bg-slate-700/30'
                 }`}
